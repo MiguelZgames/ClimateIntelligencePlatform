@@ -171,6 +171,14 @@ El proyecto usa Supabase como BaaS. No existe servidor Node dedicado en `api/` a
 - ML Pipeline ([ml_pipeline](c:\Users\migue\OneDrive\Documents\ClimateIntelligencePlatform\ml_pipeline)): entrenamiento, validación, inferencia y escrituras en `predictions`.
 - Scripts Admin ([scripts](c:\Users\migue\OneDrive\Documents\ClimateIntelligencePlatform\scripts)): `create_user.js`, `list_users.js`, `check_auth_config.js`.
 
+### Modelos y elección (XGBoost/LightGBM)
+
+- Priorizamos XGBoost y LightGBM porque son óptimos para datos tabulares con relaciones no lineales, típicos de series meteorológicas enriquecidas con features de calendario, geografía y rezagos.
+- Ofrecen entrenamiento e inferencia muy rápidos, con controles como `early_stopping` y `max_depth` que evitan sobreajuste y permiten despliegues frecuentes en CI/CD.
+- Manejan bien valores faltantes y permiten interpretar importancia de variables, útil para explicar por qué varía la temperatura/humedad por ciudad y horizonte.
+- LightGBM suele ser más veloz en grandes volúmenes; XGBoost tiende a ser más estable en precisión. Usamos ambos y seleccionamos por métrica (MAE/RMSE) por horizonte 30/60/120.
+- El pipeline soporta validación temporal (train/validation split por tiempo), `cross-validation` por ciudad y ensambles simples cuando aportan mejoras robustas.
+
 ### API (vía Supabase REST)
 
 Ejemplos de requests:
@@ -206,6 +214,14 @@ Los headers requieren `apikey: <anon_key>` y `Authorization: Bearer <anon_key>` 
 - `src/pages/Admin.tsx`: métricas de usuarios, gráficos de distribución y actividad.
 - `src/components/ProtectedRoute.tsx`: guardas de ruta por rol.
 - `src/components/predictions/MapTooltip.tsx`: tooltip visual integrado con el mapa.
+
+### Secciones de la plataforma
+
+- Dashboard: visión general con filtros por ciudad y rango temporal, gráficos de series y comparativas; exportación de datos.
+- Predicciones: mapa interactivo con tooltips ricos y tarjetas por ciudad que muestran horizontes 30/60/120 min y métricas de exactitud.
+- Admin: panel para seguimiento de actividad de usuarios, estado de ingestión ETL y salud del sistema.
+- Explorador de Datos: lectura paginada de `weather_data` con búsqueda y descarga; pensado para análisis rápido sin saturar el límite de 1000 filas.
+- Autenticación y Perfil: registro/inicio de sesión con Supabase Auth, gestión básica de perfil y rol (`admin`/`visualizador`).
 
 ### Estado y navegación
 
@@ -290,6 +306,82 @@ npm run lint    # linting
 
 ## 10. Ejemplos de Código
 
+Estos ejemplos contextualizan piezas clave del sistema para acelerar integraciones y pruebas locales.
+
+### ETL: inserción en Supabase
+
+```python
+# etl/examples/insert_weather_data.py
+from supabase import create_client
+from datetime import datetime
+
+url = "${SUPABASE_URL}"
+service_key = "${SUPABASE_SERVICE_ROLE_KEY}"
+supabase = create_client(url, service_key)
+
+row = {
+    "city": "Lima",
+    "latitude": -12.0464,
+    "longitude": -77.0428,
+    "temperature": 23.1,
+    "humidity": 0.72,
+    "weather_timestamp": datetime.utcnow().isoformat(),
+    "ingestion_time": datetime.utcnow().isoformat(),
+    "data_source": "open-meteo"
+}
+
+supabase.table("weather_data").insert(row).execute()
+```
+
+### ML: entrenamiento XGBoost para horizonte 60 min
+
+```python
+# ml_pipeline/examples/train_xgb.py
+import xgboost as xgb
+import pandas as pd
+
+df = pd.read_csv("data/train_lima.csv")
+features = [
+    "temperature_lag_15", "temperature_lag_30", "humidity", "hour", "dayofweek", "latitude", "longitude"
+]
+X, y = df[features], df["target_temp_60m"]
+
+model = xgb.XGBRegressor(
+    n_estimators=300,
+    max_depth=6,
+    learning_rate=0.05,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    random_state=42,
+)
+model.fit(X, y)
+model.save_model("models/xgb_temp_60m.json")
+```
+
+### Frontend: carga paginada (contexto)
+
+El patrón evita topes de 1000 filas en Supabase, útil para tablas grandes y vistas rápidas en Dashboard.
+
+### Actions: ejecución manual del ETL
+
+```yaml
+# .github/workflows/etl.yml (extracto)
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "*/30 * * * *"
+```
+
+Desde la pestaña "Actions" puedes disparar una corrida manual para validar secretos y dependencias.
+
+---
+
+## 11. Conclusión
+
+Climate Intelligence Platform une ingestión confiable, modelos explicables y una experiencia visual clara para convertir datos meteorológicos en decisiones. Con CI/CD y Actions, la información se mantiene fresca; con Supabase, el acceso es seguro y escalable; con React, la interacción es ágil.
+
+Si te interesa colaborar, abrir issues, proponer mejoras de modelos o nuevas visualizaciones, ¡bienvenido! Tu feedback y PRs ayudan a que 103 ciudades cuenten con pronósticos más útiles y transparentes.
+
 ### Inicialización de Supabase (frontend)
 
 ```ts
@@ -335,4 +427,3 @@ while (more) {
 ## Licencia
 
 MIT © 2026
-
