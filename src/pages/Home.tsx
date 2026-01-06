@@ -1,3 +1,6 @@
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+
 export default function Home() {
-  return <div></div>;
+  return <Navigate to="/dashboard" replace />;
 }

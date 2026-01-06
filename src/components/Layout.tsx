@@ -1,14 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { LogOut, LayoutDashboard, Settings, CloudRain } from 'lucide-react';
 
 export default function Layout() {
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    checkRole();
+  }, []);
+
+  const checkRole = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+        const { data } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+        setIsAdmin(data?.role === 'admin');
+    }
+  };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+    try {
+      // Attempt to sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) console.warn('Logout warning:', error.message);
+    } catch (err) {
+      console.warn('Logout error (network):', err);
+    } finally {
+      // Always force redirect to login, even if API fails (e.g. invalid session)
+      navigate('/');
+    }
   };
 
   return (
@@ -27,10 +52,12 @@ export default function Layout() {
             <CloudRain size={20} />
             Predictions
           </Link>
-          <Link to="/admin" className="flex items-center gap-3 px-4 py-2 hover:bg-blue-800 rounded">
-            <Settings size={20} />
-            Admin
-          </Link>
+          {isAdmin && (
+            <Link to="/admin" className="flex items-center gap-3 px-4 py-2 hover:bg-blue-800 rounded">
+                <Settings size={20} />
+                Admin
+            </Link>
+          )}
         </nav>
         <div className="p-4 border-t border-blue-800">
           <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-2 w-full hover:bg-blue-800 rounded text-red-200">

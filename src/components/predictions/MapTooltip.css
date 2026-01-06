@@ -1,0 +1,112 @@
+.map-tooltip {
+  position: relative;
+  max-width: 320px;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.map-tooltip[data-open="true"],
+.leaflet-popup-content .map-tooltip {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.map-tooltip:hover {
+  box-shadow: 0 10px 28px rgba(33, 43, 54, 0.22) !important;
+}
+
+.map-tooltip__card {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 2vw, 14px);
+  position: relative;
+  z-index: 2;
+}
+
+.map-tooltip__header {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: start;
+  gap: 10px;
+}
+.map-tooltip__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #77B6E3 0%, #2A6FE8 60%, #1E4FB8 100%);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.7);
+}
+.map-tooltip__title {
+  font-weight: 700;
+  font-size: clamp(16px, 2.2vw, 20px);
+  line-height: 1.15;
+}
+.map-tooltip__subtitle {
+  font-size: clamp(12px, 1.8vw, 14px);
+  opacity: 0.9;
+  margin-top: 2px;
+}
+.map-tooltip__close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  font-size: 20px;
+  line-height: 1;
+  border-radius: 8px;
+  padding: 4px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.map-tooltip__close:hover {
+  background: rgba(100, 116, 139, 0.12);
+  color: #0F172A;
+}
+
+.map-tooltip__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(10px, 2vw, 14px);
+}
+.map-tooltip__cell {
+  min-width: 0; /* allows text wrap */
+}
+
+.map-tooltip__footer {
+  margin-top: 6px;
+  padding: clamp(10px, 2vw, 12px);
+  border-radius: 10px;
+  background: linear-gradient(0deg, rgba(148,163,184,0.12), rgba(148,163,184,0.12));
+  color: #334155;
+  font-size: clamp(12px, 1.8vw, 13px);
+}
+
+/* Accessibility and legibility */
+.map-tooltip,
+.map-tooltip * {
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+}
+
+/* Leaflet Popup Overrides */
+.leaflet-popup-content-wrapper {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 14px !important;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+.leaflet-popup-tip {
+  display: none; /* optional: hide tip for cleaner look */
+}
+.leaflet-container a.leaflet-popup-close-button {
+  display: none; /* hide default close button */
+}
+
+/* Animations */
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
