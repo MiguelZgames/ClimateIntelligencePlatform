@@ -20,11 +20,23 @@ CREATE TABLE users (
 -- Enable RLS
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
+-- Helper function to prevent recursion in policies
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.users
+    WHERE id = auth.uid()
+    AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Policies
 CREATE POLICY "Users can view own profile" ON users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Admin can view all users" ON users FOR SELECT USING (
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+-- Use the secure function instead of direct query to avoid infinite recursion
+CREATE POLICY "Admin can view all users" ON users FOR SELECT USING (is_admin());
 
 -- 3. Trigger to automatically create public user on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -62,9 +74,7 @@ CREATE UNIQUE INDEX idx_weather_data_unique ON weather_data(city, weather_timest
 ALTER TABLE weather_data ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Anyone can view weather data" ON weather_data FOR SELECT USING (true);
-CREATE POLICY "Admin can insert weather data" ON weather_data FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admin can insert weather data" ON weather_data FOR INSERT WITH CHECK (is_admin());
 
 -- 5. User Activity Table
 CREATE TABLE user_activity (
@@ -78,9 +88,7 @@ CREATE TABLE user_activity (
 ALTER TABLE user_activity ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own activity" ON user_activity FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Admin can view all activity" ON user_activity FOR SELECT USING (
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admin can view all activity" ON user_activity FOR SELECT USING (is_admin());
 
 -- 6. Predictions Table
 CREATE TABLE predictions (
@@ -96,9 +104,7 @@ CREATE TABLE predictions (
 ALTER TABLE predictions ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own predictions" ON predictions FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Admin can view all predictions" ON predictions FOR SELECT USING (
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admin can view all predictions" ON predictions FOR SELECT USING (is_admin());
 
 -- Grant permissions
 GRANT SELECT ON weather_data TO anon;
